@@ -7,6 +7,7 @@ export interface TenantBranding {
   logo: {
     navbar: string
     hero: string
+    mark?: string
   }
   assets: {
     favicon: string
@@ -28,14 +29,15 @@ export interface TenantBranding {
 }
 
 const defaultBranding: TenantBranding = {
-  siteName: "Padel Base",
-  shortName: "Padel Base",
+  siteName: "PadelElite",
+  shortName: "TPE Padel",
   siteDomain: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-  supportEmail: "soporte@example.com",
-  tenantOrganizationSlug: process.env.NEXT_PUBLIC_TENANT_ORGANIZATION_SLUG || "organizacion-demo",
+  supportEmail: "info@padel-elite.com",
+  tenantOrganizationSlug: process.env.NEXT_PUBLIC_TENANT_ORGANIZATION_SLUG || "padel-elite",
   logo: {
-    navbar: "/placeholder-logo.svg",
-    hero: "/placeholder-logo.svg",
+    navbar: "/tpe-logo-text.svg",
+    hero: "/tpe-logo-text.svg",
+    mark: "/tpe-logo-mark.svg",
   },
   assets: {
     favicon: "/favicon.ico",
@@ -45,14 +47,14 @@ const defaultBranding: TenantBranding = {
     placeholderUser: "/placeholder-user.jpg",
   },
   seo: {
-    title: "Padel Base",
-    description: "Base single-tenant para gestionar torneos, clubes y ranking de padel.",
+    title: "PadelElite",
+    description: "Torneos semanales de padel con inscripcion clara, rapida y centrada en la experiencia del jugador.",
   },
   home: {
-    title: "Gestiona tu circuito desde una sola plataforma",
-    subtitle: "Muestra tus proximos torneos, los clubes donde organizas y el ranking de jugadores desde una instalacion dedicada.",
-    ctaPrimary: "Ver proximos torneos",
-    ctaSecondary: "Ver ranking",
+    title: "Proximos torneos de PadelElite",
+    subtitle: "Toda la agenda semanal en un formato claro: categoria, horario, sede e inscripcion desde el primer vistazo.",
+    ctaPrimary: "Ver torneos",
+    ctaSecondary: "Ver clubes",
   },
 }
 

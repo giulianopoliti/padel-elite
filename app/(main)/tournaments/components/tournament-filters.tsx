@@ -9,24 +9,20 @@ import { Filter, X, ChevronDown } from "lucide-react"
 
 interface TournamentFiltersProps {
   categories: Array<{ name: string }>
-  organizations: Array<{ id: string; name: string }>
   clubs: Array<{ id: string; name: string }>
 }
 
-export default function TournamentFilters({ categories, organizations, clubs }: TournamentFiltersProps) {
+export default function TournamentFilters({ categories, clubs }: TournamentFiltersProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isOpen, setIsOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
 
   const categoryFilter = searchParams.get("category") || "all"
-  const organizationFilter = searchParams.get("organization") || "all"
   const clubFilter = searchParams.get("club") || "all"
 
   // Detect mobile screen size
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
       setIsOpen(window.innerWidth >= 768) // Open by default on desktop
     }
 
@@ -42,17 +38,6 @@ export default function TournamentFilters({ categories, organizations, clubs }: 
       params.delete("category")
     } else {
       params.set("category", value)
-    }
-    params.delete("page") // Reset to page 1 when filtering
-    router.push(`?${params.toString()}`)
-  }
-
-  const handleOrganizationChange = (value: string) => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (value === "all") {
-      params.delete("organization")
-    } else {
-      params.set("organization", value)
     }
     params.delete("page") // Reset to page 1 when filtering
     router.push(`?${params.toString()}`)
@@ -79,12 +64,11 @@ export default function TournamentFilters({ categories, organizations, clubs }: 
     router.push(`?${params.toString()}`)
   }
 
-  const hasActiveFilters = categoryFilter !== "all" || organizationFilter !== "all" || clubFilter !== "all"
+  const hasActiveFilters = categoryFilter !== "all" || clubFilter !== "all"
 
   // Count active filters
   const activeFiltersCount = [
     categoryFilter !== "all",
-    organizationFilter !== "all",
     clubFilter !== "all"
   ].filter(Boolean).length
 
@@ -126,22 +110,6 @@ export default function TournamentFilters({ categories, organizations, clubs }: 
             </SelectContent>
           </Select>
         </div>
-      </div>
-
-      <div className="w-full md:w-56">
-        <Select value={organizationFilter} onValueChange={handleOrganizationChange}>
-          <SelectTrigger className="border-gray-200 focus:border-blue-300 focus:ring-blue-200 text-gray-600 placeholder:text-gray-400">
-            <SelectValue placeholder="Organizador" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los organizadores</SelectItem>
-            {organizations.map((org) => (
-              <SelectItem key={org.id} value={org.id}>
-                {org.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       <div className="w-full md:w-56">

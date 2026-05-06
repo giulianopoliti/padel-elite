@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { Category, Tournament } from "@/types";
+import { getTenantOrganization } from "@/lib/services/tenant-organization.service";
 
 /**
  * Calculate total participants for a set of inscriptions.
@@ -236,9 +237,10 @@ export async function getTournamentById(id: string) {
 export async function getUpcomingTournamentsForHome(limit: number = 3) {
     try {
         const supabase = await createClient();
+        const tenantOrganization = await getTenantOrganization();
 
         // Single query to get upcoming tournaments with club info, filtered and limited
-        const { data: tournaments, error } = await supabase
+        let query = supabase
             .from("tournaments")
             .select(`
                 id,
@@ -253,6 +255,9 @@ export async function getUpcomingTournamentsForHome(limit: number = 3) {
                 price,
                 description,
                 max_participants,
+                enable_transfer_proof,
+                transfer_alias,
+                transfer_amount,
                 club:clubes (
                     id,
                     name,
@@ -263,6 +268,12 @@ export async function getUpcomingTournamentsForHome(limit: number = 3) {
             .eq("status", "NOT_STARTED")
             .order("start_date", { ascending: true })
             .limit(limit);
+
+        if (tenantOrganization) {
+            query = query.eq("organization_id", tenantOrganization.id);
+        }
+
+        const { data: tournaments, error } = await query;
 
         if (error) {
             console.error("Error fetching upcoming tournaments for home:", error);
@@ -295,12 +306,14 @@ export async function getUpcomingTournamentsForHome(limit: number = 3) {
                 club: rawTournament.club ? {
                     id: rawTournament.club.id,
                     name: rawTournament.club.name,
-                    image: rawTournament.club.cover_image_url
+                    image: rawTournament.club.cover_image_url,
+                    address: rawTournament.club.address || null
                 } : null,
                 createdAt: rawTournament.created_at || null,
                 startDate: rawTournament.start_date || null,
                 endDate: rawTournament.end_date || null,
                 category: rawTournament.category_name || null,
+                categoryName: rawTournament.category_name || null,
                 gender: rawTournament.gender || "MALE",
                 status: rawTournament.status || "NOT_STARTED",
                 type: rawTournament.type || "AMERICAN",
@@ -311,6 +324,9 @@ export async function getUpcomingTournamentsForHome(limit: number = 3) {
                 currentParticipants: currentParticipants,
                 address: rawTournament.club?.address || null,
                 time: null,
+                enableTransferProof: rawTournament.enable_transfer_proof || false,
+                transferAlias: rawTournament.transfer_alias || null,
+                transferAmount: rawTournament.transfer_amount || null,
                 prize: (rawTournament.description &&
                        (rawTournament.description.includes('premio') || rawTournament.description.includes('$')))
                     ? rawTournament.description
@@ -349,6 +365,7 @@ export async function getTournamentsOptimized({
 }) {
     try {
         const supabase = await createClient();
+        const tenantOrganization = await getTenantOrganization();
 
         // Map status to database status values
         const statusMap = {
@@ -377,6 +394,9 @@ export async function getTournamentsOptimized({
                 price,
                 description,
                 max_participants,
+                enable_transfer_proof,
+                transfer_alias,
+                transfer_amount,
                 organization_id,
                 club:clubes (
                     id,
@@ -391,6 +411,10 @@ export async function getTournamentsOptimized({
             `, { count: 'exact' })
             .in("status", dbStatuses)
             .neq("is_draft", true);
+
+        if (tenantOrganization) {
+            query = query.eq("organization_id", tenantOrganization.id);
+        }
 
         // Apply filters
         if (filters.categoryName) {
@@ -457,7 +481,8 @@ export async function getTournamentsOptimized({
                 club: rawTournament.club ? {
                     id: rawTournament.club.id,
                     name: rawTournament.club.name,
-                    image: rawTournament.club.cover_image_url
+                    image: rawTournament.club.cover_image_url,
+                    address: rawTournament.club.address || null
                 } : null,
                 organization: rawTournament.organization ? {
                     id: rawTournament.organization.id,
@@ -467,6 +492,7 @@ export async function getTournamentsOptimized({
                 startDate: rawTournament.start_date || null,
                 endDate: rawTournament.end_date || null,
                 category: rawTournament.category_name || null,
+                categoryName: rawTournament.category_name || null,
                 gender: rawTournament.gender || "MALE",
                 status: rawTournament.status || "NOT_STARTED",
                 type: rawTournament.type || "AMERICAN",
@@ -477,6 +503,9 @@ export async function getTournamentsOptimized({
                 currentParticipants: currentParticipants,
                 address: rawTournament.club?.address || null,
                 time: null,
+                enableTransferProof: rawTournament.enable_transfer_proof || false,
+                transferAlias: rawTournament.transfer_alias || null,
+                transferAmount: rawTournament.transfer_amount || null,
                 prize: (rawTournament.description &&
                        (rawTournament.description.includes('premio') || rawTournament.description.includes('$')))
                     ? rawTournament.description
@@ -502,19 +531,13 @@ export async function getTournamentsOptimized({
  */
 export async function getOrganizationsForFilter() {
     try {
-        const supabase = await createClient();
-        const { data, error } = await supabase
-            .from("organizaciones")
-            .select("id, name")
-            .eq("is_active", true)
-            .order("name");
+        const tenantOrganization = await getTenantOrganization();
 
-        if (error) {
-            console.error("Error fetching organizations:", error);
+        if (!tenantOrganization) {
             return [];
         }
 
-        return data || [];
+        return [{ id: tenantOrganization.id, name: tenantOrganization.name }];
     } catch (error) {
         console.error("Error in getOrganizationsForFilter:", error);
         return [];
@@ -527,17 +550,26 @@ export async function getOrganizationsForFilter() {
 export async function getClubsForFilter() {
     try {
         const supabase = await createClient();
+        const tenantOrganization = await getTenantOrganization();
+
+        if (!tenantOrganization) {
+            return [];
+        }
+
         const { data, error } = await supabase
-            .from("clubes")
-            .select("id, name")
-            .order("name");
+            .from("organization_clubs")
+            .select("clubes(id, name)")
+            .eq("organizacion_id", tenantOrganization.id);
 
         if (error) {
             console.error("Error fetching clubs:", error);
             return [];
         }
 
-        return data || [];
+        return (data || [])
+            .map((item: any) => item.clubes)
+            .filter(Boolean)
+            .sort((clubA: { name: string }, clubB: { name: string }) => clubA.name.localeCompare(clubB.name));
     } catch (error) {
         console.error("Error in getClubsForFilter:", error);
         return [];

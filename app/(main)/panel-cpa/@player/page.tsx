@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { User, Trophy, Calendar, MapPin, Users, Edit, Clock, Swords, Target } from "lucide-react"
 import Link from "next/link"
-import { getPlayerDashboardData, getPlayerInscribedTournaments, getPlayerUpcomingTournaments } from "@/app/api/panel-cpa/actions"
+import { getPlayerDashboardData, getPlayerInscribedTournaments, getPlayerUpcomingTournaments } from "@/app/api/panel/actions"
 import { InscribedTournamentsCard } from "./components/inscribed-tournaments-card"
 import { getCategoryColor } from "@/lib/utils/category-colors"
 

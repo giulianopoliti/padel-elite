@@ -22,11 +22,6 @@ const publicLinks = [
     icon: "Trophy" as const,
   },
   {
-    path: "/ranking",
-    label: "Ranking",
-    icon: "BarChart" as const,
-  },
-  {
     path: "/clubes",
     label: "Clubes",
     icon: "MapPin" as const,
