@@ -42,8 +42,8 @@ export default async function PlayerDashboard() {
     : { inscribedTournaments: [] }
 
   // Obtener próximos torneos usando Edge Function optimizada
-  const { upcomingTournaments } = playerData?.id && playerData.category_name
-    ? await getPlayerUpcomingTournaments(playerData.id, playerData.category_name)
+  const { upcomingTournaments } = playerData?.id
+    ? await getPlayerUpcomingTournaments(playerData.id)
     : { upcomingTournaments: [] }
 
   // Format date with day of week and time

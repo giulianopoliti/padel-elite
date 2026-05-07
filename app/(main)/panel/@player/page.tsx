@@ -41,8 +41,8 @@ export default async function PlayerDashboard() {
     ? await getPlayerInscribedTournaments(playerData.id)
     : { inscribedTournaments: [] }
 
-  const { upcomingTournaments } = playerData?.id && playerData.category_name
-    ? await getPlayerUpcomingTournaments(playerData.id, playerData.category_name)
+  const { upcomingTournaments } = playerData?.id
+    ? await getPlayerUpcomingTournaments(playerData.id)
     : { upcomingTournaments: [] }
 
   const firstName = playerData?.first_name || "Jugador"

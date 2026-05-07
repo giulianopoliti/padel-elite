@@ -1,8 +1,8 @@
 // get-player-upcoming-tournaments
 // 🚀 Edge Function optimizada para obtener próximos torneos disponibles
 // Request:
-//   - POST { playerId: string, categoryName?: string }
-//   - or GET /get-player-upcoming-tournaments?playerId=<uuid>&categoryName=<string>
+//   - POST { playerId: string, organizationId: string }
+//   - or GET /get-player-upcoming-tournaments?playerId=<uuid>&organizationId=<uuid>
 // Response:
 //   { upcomingTournaments: UpcomingTournament[], error?: string }
 //
@@ -45,18 +45,18 @@ Deno.serve(async (req: Request) => {
 
   try {
     let playerId: string;
-    let categoryName: string | null = null;
+    let organizationId: string;
 
     if (req.method === 'GET') {
       const url = new URL(req.url);
       playerId = url.searchParams.get('playerId') ?? "";
-      categoryName = url.searchParams.get('categoryName');
+      organizationId = url.searchParams.get('organizationId') ?? "";
     } else if (req.method === 'POST') {
       const contentType = req.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         const body = await req.json().catch(() => ({}));
         playerId = body.playerId;
-        categoryName = body.categoryName || null;
+        organizationId = body.organizationId;
       } else {
         return jsonResponse({
           upcomingTournaments: [],
@@ -74,6 +74,13 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({
         upcomingTournaments: [],
         error: 'playerId inválido'
+      }, 400);
+    }
+
+    if (!isUuid(organizationId)) {
+      return jsonResponse({
+        upcomingTournaments: [],
+        error: 'organizationId inválido'
       }, 400);
     }
 
@@ -125,15 +132,11 @@ Deno.serve(async (req: Request) => {
           address
         )
       `)
+      .eq('organization_id', organizationId)
       .in('status', ['NOT_STARTED' ])
       .gte('start_date', new Date().toISOString())
       .order('start_date', { ascending: true })
       .limit(10);
-
-    // Filter by category if provided
-    if (categoryName) {
-      query = query.eq('category_name', categoryName);
-    }
 
     const { data: tournaments, error: tournamentsError } = await query;
 

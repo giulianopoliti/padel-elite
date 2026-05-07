@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { getTenantUpcomingTournamentSummaries } from '@/lib/services/tenant-home.service'
 
 export type PlayerNextMatch = {
   match_id: string
@@ -80,12 +81,15 @@ export type UpcomingTournament = {
   status: string
   category_name: string
   gender: string
-  max_participants: number
+  max_participants: number | null
   current_inscriptions: number
   description: string
-  price: number
+  price: number | string | null
   is_inscribed: boolean
   is_full: boolean
+  enable_transfer_proof?: boolean
+  transfer_alias?: string | null
+  transfer_amount?: number | null
   club: {
     name: string
     address: string | null
@@ -146,28 +150,92 @@ export async function getPlayerInscribedTournaments(playerId: string): Promise<I
   }
 }
 
-export async function getPlayerUpcomingTournaments(
-  playerId: string,
-  categoryName?: string,
-): Promise<UpcomingTournamentsResult> {
+export async function getPlayerUpcomingTournaments(playerId: string): Promise<UpcomingTournamentsResult> {
   try {
     const supabase = await createClient()
+    const tournaments = await getTenantUpcomingTournamentSummaries(8)
 
-    const { data, error } = await supabase.functions.invoke('get-player-upcoming-tournaments', {
-      body: { playerId, categoryName },
-    })
+    if (tournaments.length === 0) {
+      return { upcomingTournaments: [] }
+    }
 
-    if (error) {
-      console.error('Edge function error:', error)
+    const { data: playerCouples, error: couplesError } = await supabase
+      .from('couples')
+      .select('id')
+      .or(`player1_id.eq.${playerId},player2_id.eq.${playerId}`)
+
+    if (couplesError) {
+      console.error('Error fetching player couples:', couplesError)
       return {
         upcomingTournaments: [],
-        error: 'Error al obtener torneos proximos',
+        error: 'Error al obtener parejas del jugador',
       }
     }
 
-    return data as UpcomingTournamentsResult
+    const coupleIds = (playerCouples || []).map((couple: any) => couple.id)
+    const tournamentIds = tournaments.map((tournament) => tournament.id)
+
+    let inscribedTournamentIds = new Set<string>()
+    if (coupleIds.length > 0) {
+      const { data: inscriptions, error: inscriptionsError } = await supabase
+        .from('inscriptions')
+        .select('tournament_id')
+        .in('couple_id', coupleIds)
+        .in('tournament_id', tournamentIds)
+
+      if (inscriptionsError) {
+        console.error('Error fetching player inscriptions:', inscriptionsError)
+      } else {
+        inscribedTournamentIds = new Set((inscriptions || []).map((inscription: any) => inscription.tournament_id))
+      }
+    }
+
+    const { data: allInscriptions, error: allInscriptionsError } = await supabase
+      .from('inscriptions')
+      .select('tournament_id')
+      .in('tournament_id', tournamentIds)
+
+    if (allInscriptionsError) {
+      console.error('Error fetching tournament inscription counts:', allInscriptionsError)
+    }
+
+    const countMap: Record<string, number> = {}
+    for (const inscription of allInscriptions || []) {
+      const tournamentId = (inscription as any).tournament_id
+      countMap[tournamentId] = (countMap[tournamentId] || 0) + 1
+    }
+
+    const upcomingTournaments: UpcomingTournament[] = tournaments.map((tournament) => {
+      const currentInscriptions = countMap[tournament.id] || 0
+      const maxParticipants = null
+
+      return {
+        id: tournament.id,
+        name: tournament.name,
+        start_date: tournament.startDate || '',
+        end_date: tournament.endDate || '',
+        status: tournament.status,
+        category_name: tournament.categoryName || '',
+        gender: typeof tournament.gender === 'string' ? tournament.gender : '',
+        max_participants: maxParticipants,
+        current_inscriptions: currentInscriptions,
+        description: '',
+        price: tournament.price ?? null,
+        is_inscribed: inscribedTournamentIds.has(tournament.id),
+        is_full: typeof maxParticipants === 'number' ? currentInscriptions >= maxParticipants : false,
+        enable_transfer_proof: tournament.enableTransferProof || false,
+        transfer_alias: tournament.transferAlias || null,
+        transfer_amount: tournament.transferAmount || null,
+        club: {
+          name: tournament.club?.name || 'Sin club',
+          address: tournament.club?.address || null,
+        },
+      }
+    })
+
+    return { upcomingTournaments }
   } catch (error) {
-    console.error('Error calling edge function:', error)
+    console.error('Error getting tenant upcoming tournaments for player panel:', error)
     return {
       upcomingTournaments: [],
       error: 'Error inesperado al obtener torneos proximos',

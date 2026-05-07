@@ -144,6 +144,9 @@ export default function PlayerUpcomingTournamentsSection({
                     tournamentName={tournament.name}
                     tournamentGender={(tournament.gender as Gender) || Gender.MALE}
                     tournamentPrice={tournament.price ?? null}
+                    enableTransferProof={tournament.enable_transfer_proof || false}
+                    transferAlias={tournament.transfer_alias || null}
+                    transferAmount={tournament.transfer_amount || null}
                     buttonClassName="w-full rounded-full bg-[var(--tpe-lime)] text-sm font-black uppercase tracking-[0.16em] text-[var(--tpe-night)] hover:bg-[#e6ff63]"
                     fullWidth
                   />

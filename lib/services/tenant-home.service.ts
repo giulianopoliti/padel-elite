@@ -32,48 +32,37 @@ export interface TenantHomeData {
   clubs: TenantClub[]
 }
 
-export async function getTenantHomeData(): Promise<TenantHomeData> {
+export async function getTenantUpcomingTournamentSummaries(limit: number = 8): Promise<PublicTournamentSummary[]> {
   const supabase = await createClient()
   const organization = await getTenantOrganization()
 
   if (!organization) {
-    return {
-      organization: null,
-      tournaments: [],
-      clubs: [],
-    }
+    return []
   }
 
-  const [tournamentsResult, clubsResult] = await Promise.all([
-    supabase
-      .from("tournaments")
-      .select(`
-        id,
-        name,
-        status,
-        type,
-        category_name,
-        gender,
-        start_date,
-        end_date,
-        price,
-        enable_transfer_proof,
-        transfer_alias,
-        transfer_amount,
-        clubes(id, name, address)
-      `)
-      .eq("organization_id", organization.id)
-      .eq("status", "NOT_STARTED")
-      .order("start_date", { ascending: true })
-      .limit(8),
-    supabase
-      .from("organization_clubs")
-      .select("clubes(id, name, address, courts, cover_image_url)")
-      .eq("organizacion_id", organization.id)
-      .limit(6),
-  ])
+  const { data } = await supabase
+    .from("tournaments")
+    .select(`
+      id,
+      name,
+      status,
+      type,
+      category_name,
+      gender,
+      start_date,
+      end_date,
+      price,
+      enable_transfer_proof,
+      transfer_alias,
+      transfer_amount,
+      clubes(id, name, address)
+    `)
+    .eq("organization_id", organization.id)
+    .eq("status", "NOT_STARTED")
+    .order("start_date", { ascending: true })
+    .limit(limit)
 
-  const tournaments = (tournamentsResult.data || []).map((tournament: any) => ({
+  return (data || []).map((tournament: any) => ({
     id: tournament.id,
     name: tournament.name,
     type: tournament.type,
@@ -98,6 +87,28 @@ export async function getTenantHomeData(): Promise<TenantHomeData> {
           address: tournament.clubes?.address || null,
         },
   }))
+}
+
+export async function getTenantHomeData(): Promise<TenantHomeData> {
+  const supabase = await createClient()
+  const organization = await getTenantOrganization()
+
+  if (!organization) {
+    return {
+      organization: null,
+      tournaments: [],
+      clubs: [],
+    }
+  }
+
+  const [tournaments, clubsResult] = await Promise.all([
+    getTenantUpcomingTournamentSummaries(8),
+    supabase
+      .from("organization_clubs")
+      .select("clubes(id, name, address, courts, cover_image_url)")
+      .eq("organizacion_id", organization.id)
+      .limit(6),
+  ])
 
   const clubs = (clubsResult.data || [])
     .map((item: any) => item.clubes)
